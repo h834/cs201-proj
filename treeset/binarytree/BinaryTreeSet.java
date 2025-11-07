@@ -1,14 +1,15 @@
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Stack;
 
-public class BinaryTreeSet<E> {
+public class BinaryTreeSet {
 
     //node
-    private static class Node<String> {
+    private static class Node {
         String key;
         String value;
-        Node<String> left;
-        Node<String> right;
+        Node left;
+        Node right;
         
         Node(String key, String value) {
             this.key = key;
@@ -16,7 +17,7 @@ public class BinaryTreeSet<E> {
         }
     }
 
-    private Node<String> root;
+    private Node root;
     private int size = 0;
 
     // Constructor
@@ -43,26 +44,26 @@ public class BinaryTreeSet<E> {
         
         String key = sha256Hex(value);
         if (root == null) {
-            root = new Node<>(key,value);
+            root = new Node(key,value);
             size++;
             return true;
         }
 
-        Node<String> current = root;
+        Node current = root;
         while (true) {
             int cmp = compare(key, current.key);
             if (cmp == 0) {
                 return false; // Duplicate — do not insert
             } else if (cmp < 0) {
                 if (current.left == null) {
-                    current.left = new Node<>(key,value);
+                    current.left = new Node(key,value);
                     size++;
                     return true;
                 }
                 current = current.left;
             } else {
                 if (current.right == null) {
-                    current.right = new Node<>(key,value);
+                    current.right = new Node(key,value);
                     size++;
                     return true;
                 }
@@ -73,7 +74,7 @@ public class BinaryTreeSet<E> {
 
     public boolean contains(String value) throws NoSuchAlgorithmException{
         String key = sha256Hex(value);
-        Node<String> current = root;
+        Node current = root;
         while (current != null) {
             int cmp = compare(key, current.key);
             if (cmp == 0)
@@ -83,12 +84,51 @@ public class BinaryTreeSet<E> {
         return false;
     }
 
+    public boolean equalsSet(BinaryTreeSet otherSet) {
+        if (this.size() != otherSet.size()) return false;
+        Stack<Node> stack1 = new Stack<>();
+        Stack<Node> stack2 = new Stack<>();
+        
+        Node current1 = this.root;
+        Node current2 = otherSet.root;
+        
+        while ((current1 != null || !stack1.isEmpty()) &&
+            (current2 != null || !stack2.isEmpty())) {
+            
+            // Reach the leftmost nodes of both trees
+            while (current1 != null) {
+                stack1.push(current1);
+                current1 = current1.left;
+            }
+            while (current2 != null) {
+                stack2.push(current2);
+                current2 = current2.left;
+            }
+            
+            // Pop nodes from both stacks
+            current1 = stack1.pop();
+            current2 = stack2.pop();
+            
+            // Compare values
+            if (!current1.value.equals(current2.value)) {
+                return false;
+            }
+            
+            // Move to the right subtree
+            current1 = current1.right;
+            current2 = current2.right;
+        }
+        
+        // Both stacks should be empty if trees are equal
+        return stack1.isEmpty() && stack2.isEmpty();
+    }
+
     public boolean remove(String value) throws NoSuchAlgorithmException{
         if (root == null)
             return false;
 
-        Node<String> parent = null;
-        Node<String> current = root;
+        Node parent = null;
+        Node current = root;
         String key = sha256Hex(value);
 
         // Find the node to delete
@@ -105,8 +145,8 @@ public class BinaryTreeSet<E> {
 
         // Case 1: Node has two children
         if (current.left != null && current.right != null) {
-            Node<String> successorParent = current;
-            Node<String> successor = current.right;
+            Node successorParent = current;
+            Node successor = current.right;
             while (successor.left != null) {
                 successorParent = successor;
                 successor = successor.left;
@@ -119,7 +159,7 @@ public class BinaryTreeSet<E> {
         }
 
         // Case 2: Node has 0 or 1 child
-        Node<String> child = (current.left != null) ? current.left : current.right;
+        Node child = (current.left != null) ? current.left : current.right;
 
         if (parent == null)
             root = child;
@@ -134,40 +174,5 @@ public class BinaryTreeSet<E> {
 
     public int size() {
         return size;
-    }
-
-    // ---- Optional: in-order traversal for debugging ----
-    public void printInOrder() {
-        System.out.print("[");
-        inOrder(root);
-        System.out.println("]");
-    }
-
-    private void inOrder(Node<String> node) {
-        if (node == null) return;
-        inOrder(node.left);
-        System.out.print(node.value + " ");
-        inOrder(node.right);
-    }
-
-    // ---- Simple test ----
-    public static void main(String[] args) throws NoSuchAlgorithmException {
-        BinaryTreeSet<String> set = new BinaryTreeSet<>();
-
-        set.add("10");
-        set.add("5");
-        set.add("15");
-        set.add("7");
-        set.add("3");
-
-        System.out.println("Set contains 7? " + set.contains("7"));
-        System.out.println("Set contains 8? " + set.contains("8"));
-
-        set.printInOrder(); // [3 5 7 10 15]
-
-        set.remove("5");
-        set.printInOrder(); // [3 7 10 15]
-
-        System.out.println("Size: " + set.size());
     }
 }
