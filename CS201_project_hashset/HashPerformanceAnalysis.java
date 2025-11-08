@@ -2,291 +2,246 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Collections;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
  * Main class to run a performance and statistical analysis on different
  * ISet (HashSet) implementations.
  *
- * This class performs two main analyses:
- * 1. Statistical Analysis: Runs the full dataset comparison multiple times
- * to calculate mean, variance, quantiles, and confidence intervals.
- * 2. Subset Analysis: Runs the comparison on increasing subsets of the data
- * to generate data for plotting the rate of time increase.
+ * DIFFERENTIATED ANALYSIS VERSION:
+ * - Separately measures Insertion (add) and Comparison (intersection/contains) times.
  *
- * Assumes the following files are in the same directory:
- * - ISet.java
- * - HashSetSeparateChaining.java
- * - HashSetLinearProbing.java
- * - HashSetQuadraticProbing.java
- * - airline.csv
- * - lounge.csv
+ * Analyses:
+ * 1. Statistical Analysis: Mean/Variance for BOTH Insertion and Intersection at full size.
+ * 2. Intersection Scaling: Line graph data for pure intersection time.
+ * 3. Insertion Scaling: Line graph data for pure insertion time.
  */
 public class HashPerformanceAnalysis {
 
     // --- CONFIGURATION ---
-    // Paths to the data files. Update these if your files are in a different location.
     private static final String AIRLINE_FILE = "airline.csv";
     private static final String LOUNGE_FILE = "lounge.csv";
-
-    // Assumes User ID is in the first column (index 0) for both files.
-    // Change these values if your User ID is in a different column.
     private static final int AIRLINE_USER_ID_COLUMN = 0;
     private static final int LOUNGE_USER_ID_COLUMN = 0;
 
-    // Number of trials for the statistical analysis (Case 1).
-    // 30 is a good starting point for the Central Limit Theorem.
     private static final int STATISTICAL_TRIALS = 30;
-
-    // Percentage steps for the subset analysis (Case 2).
-    // {0.1, 0.2, ..., 1.0}
     private static final double[] SUBSET_PERCENTAGES = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
+    private static final int MEDIAN_TRIALS = 15; // Used for both scaling analyses now
     // --- END CONFIGURATION ---
 
 
-    /**
-     * Main entry point for the analysis.
-     */
     public static void main(String[] args) {
-        // Load the full datasets into memory once.
-        System.out.println("Loading data from " + AIRLINE_FILE + " and " + LOUNGE_FILE + "...");
+        System.out.println("Loading data...");
         List<String> airlineData = loadUserIDs(AIRLINE_FILE, AIRLINE_USER_ID_COLUMN);
         List<String> loungeData = loadUserIDs(LOUNGE_FILE, LOUNGE_USER_ID_COLUMN);
         System.out.printf("Loaded %d airline records and %d lounge records.\n", airlineData.size(), loungeData.size());
-        System.out.println("---");
 
         if (airlineData.isEmpty() || loungeData.isEmpty()) {
-            System.err.println("Error: One or both data files failed to load or are empty. Aborting.");
+            System.err.println("Error: Data files empty or missing. Aborting.");
             return;
         }
 
-        // --- JIT WARM-UP ---
-        // Run the process once for each implementation to allow the Java JIT
-        // compiler to optimize the code before we start timing.
-        System.out.println("Performing JIT warm-up runs...");
-        runSingleProcess(HashSetSeparateChaining::new, airlineData, loungeData);
-        runSingleProcess(HashSetLinearProbing::new, airlineData, loungeData);
-        runSingleProcess(HashSetQuadraticProbing::new, airlineData, loungeData);
-        System.out.println("Warm-up complete.");
-        System.out.println("==========================================================");
+        // --- WARM-UP ---
+        System.out.println("Warming up JVM...");
+        warmUp(HashSetSeparateChaining::new, airlineData, loungeData);
+        warmUp(HashSetLinearProbing::new, airlineData, loungeData);
+        warmUp(HashSetQuadraticProbing::new, airlineData, loungeData);
+        System.out.println("Warm-up complete.\n");
 
+        // --- CASE 1: FULL STATISTICAL BREAKDOWN ---
+        System.out.println("=== [Case 1] Statistical Analysis (Differentiated) ===");
+        runDifferentiatedStats(airlineData, loungeData);
+        System.out.println("\n");
 
-        // --- CASE 1 & 4: STATISTICAL ANALYSIS ---
-        System.out.println("Running Statistical Analysis (Case 1)...");
-        runStatisticalAnalysis(airlineData, loungeData);
-        System.out.println("==========================================================");
+        // --- CASE 2: INTERSECTION SCALING ---
+        System.out.println("=== [Case 2] Pure Intersection Time Scaling (Comparison) ===");
+        runIntersectionScaling(airlineData, loungeData);
+        System.out.println("\n");
 
-
-        // --- CASE 2: SUBSET ANALYSIS ---
-        System.out.println("Running Subset/Superset Analysis (Case 2)...");
-        runSubsetAnalysis(airlineData, loungeData);
-        System.out.println("==========================================================");
+        // --- CASE 3: INSERTION SCALING ---
+        System.out.println("=== [Case 3] Pure Insertion Time Scaling ===");
+        runInsertionScaling(airlineData);
     }
 
-    /**
-     * Reads a CSV file and extracts User IDs from a specified column.
-     * Assumes the first line is a header and skips it.
-     */
-    private static List<String> loadUserIDs(String filePath, int columnIndex) {
-        List<String> userIDs = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            br.readLine(); // Skip header row
+    // ==================================================================
+    // CASE 1: DIFFERENTIATED STATISTICS
+    // ==================================================================
 
-            while ((line = br.readLine()) != null) {
-                String[] values = line.split(",");
-                if (values.length > columnIndex) {
-                    userIDs.add(values[columnIndex].trim());
-                }
-            }
-        } catch (IOException e) {
-            System.err.println("Error reading file " + filePath + ": " + e.getMessage());
-        }
-        return userIDs;
-    }
-
-    /**
-     * The core task: populates two sets and finds their intersection.
-     * Returns the time taken in nanoseconds.
-     */
-    private static long runSingleProcess(Supplier<ISet<String>> setFactory,
-                                         List<String> airlineData,
-                                         List<String> loungeData) {
-
-        ISet<String> airlineSet = setFactory.get();
-        ISet<String> loungeSet = setFactory.get();
-
-        long startTime = System.nanoTime();
-
-        // 1. Populate airline set
-        for (String id : airlineData) {
-            airlineSet.add(id);
-        }
-
-        // 2. Populate lounge set
-        for (String id : loungeData) {
-            loungeSet.add(id);
-        }
-
-        // 3. Find intersection
-        ISet<String> overlap = airlineSet.intersection(loungeSet);
-
-        long endTime = System.nanoTime();
-
-        // Optional: Print overlap size to verify correctness
-        // System.out.println("Overlap size: " + overlap.size());
-
-        return endTime - startTime;
-    }
-
-    /**
-     * Runs the analysis N times for each hash method to get statistical data.
-     */
-    private static void runStatisticalAnalysis(List<String> airlineData, List<String> loungeData) {
-        // We will store timings in milliseconds for easier reading.
-        List<Double> scTimes = new ArrayList<>();
-        List<Double> lpTimes = new ArrayList<>();
-        List<Double> qpTimes = new ArrayList<>();
-
+    private static void runDifferentiatedStats(List<String> aData, List<String> lData) {
         System.out.printf("Running %d trials for each implementation...\n", STATISTICAL_TRIALS);
 
+        // Storage for times [0]=Insertion, [1]=Intersection
+        List<double[]> scTimes = new ArrayList<>();
+        List<double[]> lpTimes = new ArrayList<>();
+        List<double[]> qpTimes = new ArrayList<>();
+
         for (int i = 0; i < STATISTICAL_TRIALS; i++) {
-            System.out.print("Running trial " + (i + 1) + "/" + STATISTICAL_TRIALS + "...\r");
-            scTimes.add(runSingleProcess(HashSetSeparateChaining::new, airlineData, loungeData) / 1_000_000.0);
-            lpTimes.add(runSingleProcess(HashSetLinearProbing::new, airlineData, loungeData) / 1_000_000.0);
-            qpTimes.add(runSingleProcess(HashSetQuadraticProbing::new, airlineData, loungeData) / 1_000_000.0);
+            System.out.print("\rProgress: " + (i + 1) + "/" + STATISTICAL_TRIALS);
+            scTimes.add(runSingleTrial(HashSetSeparateChaining::new, aData, lData));
+            lpTimes.add(runSingleTrial(HashSetLinearProbing::new, aData, lData));
+            qpTimes.add(runSingleTrial(HashSetQuadraticProbing::new, aData, lData));
         }
-        System.out.println("\nTrials complete. Calculating statistics...");
-        System.out.println("---");
+        System.out.println("\nCalculating differentiated statistics...");
 
-        System.out.println("STATISTICAL ANALYSIS RESULTS (All times in milliseconds)");
-        System.out.println("---");
-        calculateAndPrintStats("Separate Chaining", scTimes);
-        System.out.println("---");
-        calculateAndPrintStats("Linear Probing", lpTimes);
-        System.out.println("---");
-        calculateAndPrintStats("Quadratic Probing", qpTimes);
-        System.out.println("---");
+        printDifferentiatedStats("Separate Chaining", scTimes);
+        printDifferentiatedStats("Linear Probing", lpTimes);
+        printDifferentiatedStats("Quadratic Probing", qpTimes);
     }
 
-    /**
-     * Helper function to calculate and print all required statistics.
-     */
-    private static void calculateAndPrintStats(String methodName, List<Double> times) {
-        Collections.sort(times); // Sort for quantiles
+    private static double[] runSingleTrial(Supplier<ISet<String>> factory, List<String> aData, List<String> lData) {
+        ISet<String> setA = factory.get();
+        ISet<String> setB = factory.get();
 
-        // --- Calculations ---
-        double sum = 0;
-        for (double time : times) {
-            sum += time;
-        }
-        double mean = sum / times.size();
+        // 1. Measure Insertion (Airline data)
+        long startInsert = System.nanoTime();
+        for (String s : aData) setA.add(s);
+        long endInsert = System.nanoTime();
 
-        double sumSqDiff = 0;
-        for (double time : times) {
-            sumSqDiff += Math.pow(time - mean, 2);
-        }
-        double variance = sumSqDiff / (times.size() - 1); // Sample variance
-        double stdDev = Math.sqrt(variance);
+        // 2. Setup Set B (untimed for this specific metric, just setup)
+        for (String s : lData) setB.add(s);
 
-        // 95% CI: mean ± (1.96 * (stdDev / sqrt(n)))
-        double ciMargin = 1.96 * (stdDev / Math.sqrt(times.size()));
-        double ciLower = mean - ciMargin;
-        double ciUpper = mean + ciMargin;
+        // 3. Measure Intersection (Comparison dominant)
+        long startIntersect = System.nanoTime();
+        setA.intersection(setB);
+        long endIntersect = System.nanoTime();
 
-        // Quantiles
-        double q1 = getQuantile(times, 0.25);
-        double q3 = getQuantile(times, 0.75);
-
-        // --- Printing (FIXED AGAIN) ---
-        // Removed all System.out.printf calls to avoid the
-        // FormatFlagsConversionMismatchException,
-        // replacing them with System.out.println and string concatenation.
-        System.out.println("Method: " + methodName);
-        System.out.println("  Trials:          " + times.size());
-        System.out.println("  Mean (Average):  " + String.format("%.4f", mean) + " ms");
-        System.out.println("  Variance:        " + String.format("%.4f", variance) + " ms^2");
-        System.out.println("  Std Deviation:   " + String.format("%.4f", stdDev) + " ms");
-        System.out.println("  95% CI:          [" + String.format("%.4f", ciLower) + " ms, " + String.format("%.4f", ciUpper) + " ms]");
-        System.out.println("  1st Quantile (Q1): " + String.format("%.4f", q1) + " ms");
-        System.out.println("  Median (Q2):     " + String.format("%.4f", getQuantile(times, 0.5)) + " ms");
-        System.out.println("  3rd Quantile (Q3): " + String.format("%.4f", q3) + " ms");
+        return new double[] { (endInsert - startInsert) / 1e6, (endIntersect - startIntersect) / 1e6 };
     }
 
-    /**
-     * Calculates a specific quantile (e.g., 0.25 for Q1) from a sorted list.
-     * Uses a simple linear interpolation method.
-     */
-    private static double getQuantile(List<Double> sortedTimes, double quantile) {
-        double index = quantile * (sortedTimes.size() - 1);
-        int lower = (int) Math.floor(index);
-        int upper = (int) Math.ceil(index);
-        if (lower == upper) {
-            return sortedTimes.get(lower);
+    private static void printDifferentiatedStats(String name, List<double[]> times) {
+        List<Double> insertTimes = new ArrayList<>();
+        List<Double> intersectTimes = new ArrayList<>();
+        for (double[] pair : times) {
+            insertTimes.add(pair[0]);
+            intersectTimes.add(pair[1]);
         }
-        // Linear interpolation
-        double fraction = index - lower;
-        return sortedTimes.get(lower) + (sortedTimes.get(upper) - sortedTimes.get(lower)) * fraction;
+
+        System.out.println("\n--- " + name + " ---");
+        System.out.println(">> INSERTION (Pure `add` time for " + 41455 + " items)");
+        printSubStats(insertTimes);
+        System.out.println(">> COMPARISON (Pure `intersection` time)");
+        printSubStats(intersectTimes);
     }
 
+    private static void printSubStats(List<Double> times) {
+        Collections.sort(times);
+        double mean = times.stream().mapToDouble(val -> val).average().orElse(0.0);
+        double stdDev = Math.sqrt(times.stream().mapToDouble(val -> Math.pow(val - mean, 2)).sum() / (times.size() - 1));
+        double ci = 1.96 * (stdDev / Math.sqrt(times.size()));
 
-    /**
-     * Runs the analysis on increasing subsets of the data.
-     */
-    private static void runSubsetAnalysis(List<String> airlineData, List<String> loungeData) {
-        System.out.println("Generating data for line plots...");
-        System.out.println("Note: This may take a moment.");
+        System.out.println("   Mean: " + String.format("%.4f", mean) + " ms");
+        System.out.println("   Std Dev: " + String.format("%.4f", stdDev) + " ms");
+        System.out.println("   95% CI: [" + String.format("%.4f", mean - ci) + ", " + String.format("%.4f", mean + ci) + "]");
+        System.out.println("   Median: " + String.format("%.4f", getQuantile(times, 0.5)) + " ms");
+    }
 
-        // Store results as {Size, Time} pairs
-        List<String> scResults = new ArrayList<>();
-        List<String> lpResults = new ArrayList<>();
-        List<String> qpResults = new ArrayList<>();
+    // ==================================================================
+    // CASE 2: INTERSECTION SCALING (COMPARISON FOCUS)
+    // ==================================================================
 
-        // Add headers for the CSV-like output
-        scResults.add("TotalItems,Time(ms)");
-        lpResults.add("TotalItems,Time(ms)");
-        qpResults.add("TotalItems,Time(ms)");
+    private static void runIntersectionScaling(List<String> aData, List<String> lData) {
+        System.out.println("AirlineSize,LoungeSize,SC_Intersect(ms),LP_Intersect(ms),QP_Intersect(ms)");
+        for (double pct : SUBSET_PERCENTAGES) {
+            List<String> aSub = aData.subList(0, (int) (aData.size() * pct));
+            List<String> lSub = lData.subList(0, (int) (lData.size() * pct));
 
-        for (double percentage : SUBSET_PERCENTAGES) {
-            int airlineSubsetSize = (int) (airlineData.size() * percentage);
-            int loungeSubsetSize = (int) (loungeData.size() * percentage);
-            int totalItems = airlineSubsetSize + loungeSubsetSize;
+            System.err.print("Processing intersection size " + aSub.size() + "...\r");
 
-            System.out.printf("Processing subset: %.0f%% (Total items: %d)\n", percentage * 100, totalItems);
+            double sc = getMedianIntersectionTime(HashSetSeparateChaining::new, aSub, lSub);
+            double lp = getMedianIntersectionTime(HashSetLinearProbing::new, aSub, lSub);
+            double qp = getMedianIntersectionTime(HashSetQuadraticProbing::new, aSub, lSub);
 
-            List<String> airlineSubset = airlineData.subList(0, airlineSubsetSize);
-            List<String> loungeSubset = loungeData.subList(0, loungeSubsetSize);
-
-            // Run each implementation once for this subset size.
-            // Convert nanoseconds to milliseconds.
-            long scTime = runSingleProcess(HashSetSeparateChaining::new, airlineSubset, loungeSubset);
-            long lpTime = runSingleProcess(HashSetLinearProbing::new, airlineSubset, loungeSubset);
-            long qpTime = runSingleProcess(HashSetQuadraticProbing::new, airlineSubset, loungeSubset);
-
-            scResults.add(String.format("%d,%.4f", totalItems, scTime / 1_000_000.0));
-            lpResults.add(String.format("%d,%.4f", totalItems, lpTime / 1_000_000.0));
-            qpResults.add(String.format("%d,%.4f", totalItems, qpTime / 1_000_000.0));
+            System.out.println(aSub.size() + "," + lSub.size() + "," +
+                    String.format("%.4f", sc) + "," + String.format("%.4f", lp) + "," + String.format("%.4f", qp));
         }
+        System.err.println("Intersection scaling complete.                ");
+    }
 
-        System.out.println("\n--- SUBSET ANALYSIS DATA ---");
-        System.out.println("Copy and paste this data into a spreadsheet to plot a line graph.");
+    private static double getMedianIntersectionTime(Supplier<ISet<String>> factory, List<String> aData, List<String> lData) {
+        List<Double> times = new ArrayList<>();
+        for (int i = 0; i < MEDIAN_TRIALS; i++) {
+            ISet<String> setA = factory.get();
+            ISet<String> setB = factory.get();
+            for (String s : aData) setA.add(s);
+            for (String s : lData) setB.add(s);
 
-        System.out.println("\n--- Separate Chaining ---");
-        for (String line : scResults) {
-            System.out.println(line);
+            long start = System.nanoTime();
+            setA.intersection(setB);
+            long end = System.nanoTime();
+            times.add((end - start) / 1e6);
         }
+        Collections.sort(times);
+        return times.get(MEDIAN_TRIALS / 2);
+    }
 
-        System.out.println("\n--- Linear Probing ---");
-        for (String line : lpResults) {
-            System.out.println(line);
-        }
+    // ==================================================================
+    // CASE 3: INSERTION SCALING (ALREADY IMPLEMENTED, JUST RENAMED)
+    // ==================================================================
 
-        System.out.println("\n--- Quadratic Probing ---");
-        for (String line : qpResults) {
-            System.out.println(line);
+    private static void runInsertionScaling(List<String> data) {
+        System.out.println("SampleSize,SC_Insert(ms),LP_Insert(ms),QP_Insert(ms)");
+        for (double pct : SUBSET_PERCENTAGES) {
+            int size = (int) (data.size() * pct);
+            List<String> subset = data.subList(0, size);
+            System.err.print("Processing insertion size " + size + "...\r");
+
+            double sc = getMedianInsertionTime(HashSetSeparateChaining::new, subset);
+            double lp = getMedianInsertionTime(HashSetLinearProbing::new, subset);
+            double qp = getMedianInsertionTime(HashSetQuadraticProbing::new, subset);
+
+            System.out.println(size + "," + String.format("%.4f", sc) + "," +
+                    String.format("%.4f", lp) + "," + String.format("%.4f", qp));
         }
+        System.err.println("Insertion scaling complete.                   ");
+    }
+
+    private static double getMedianInsertionTime(Supplier<ISet<String>> factory, List<String> data) {
+        List<Double> times = new ArrayList<>();
+        for (int i = 0; i < MEDIAN_TRIALS; i++) {
+            ISet<String> set = factory.get();
+            long start = System.nanoTime();
+            for (String item : data) set.add(item);
+            long end = System.nanoTime();
+            times.add((end - start) / 1e6);
+        }
+        Collections.sort(times);
+        return times.get(MEDIAN_TRIALS / 2);
+    }
+
+    // ==================================================================
+    // UTILITIES
+    // ==================================================================
+
+    private static void warmUp(Supplier<ISet<String>> factory, List<String> a, List<String> l) {
+        // Basic run through to trigger JIT compilation for both paths
+        ISet<String> s1 = factory.get();
+        ISet<String> s2 = factory.get();
+        for(int i=0; i<1000 && i<a.size(); i++) s1.add(a.get(i));
+        for(int i=0; i<1000 && i<l.size(); i++) s2.add(l.get(i));
+        s1.intersection(s2);
+    }
+
+    private static List<String> loadUserIDs(String path, int colIdx) {
+        List<String> ids = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(path))) {
+            br.readLine();
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(",");
+                if (parts.length > colIdx) ids.add(parts[colIdx].trim());
+            }
+        } catch (IOException e) { System.err.println("Error reading " + path); }
+        return ids;
+    }
+
+    private static double getQuantile(List<Double> sorted, double q) {
+        double pos = q * (sorted.size() - 1);
+        int idx = (int) pos;
+        if (idx + 1 < sorted.size()) {
+             return sorted.get(idx) + (sorted.get(idx + 1) - sorted.get(idx)) * (pos - idx);
+        }
+        return sorted.get(idx);
     }
 }
