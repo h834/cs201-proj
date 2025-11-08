@@ -12,7 +12,7 @@ public class ProbabilisticSet {
 
     // Parameter that controls the accuracy of the model
     // This is a good default.
-    private static final int DEFAULT_LOG_K = 12;
+    private static final int DEFAULT_LOG_K = 20;
 
     // This sketch will store the unique items for this one set.
     private HllSketch sketch;

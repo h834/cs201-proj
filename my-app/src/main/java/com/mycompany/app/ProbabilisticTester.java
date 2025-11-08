@@ -146,7 +146,7 @@ public class ProbabilisticTester {
         
         // Setup experiment
         Random rng = new Random(42); // Fixed seed for reproducibility
-        int[] sampleSizes = {100,200,300,400,500,600,700,800,900,1000};
+        int[] sampleSizes = {100,200,500,1000,2500,5000,10000,20000,30000,40000};
         int k = 41; // Number of runs per sample size
 
         Map<Integer, List<Long>> insertionTimingsMap = new LinkedHashMap<>();
