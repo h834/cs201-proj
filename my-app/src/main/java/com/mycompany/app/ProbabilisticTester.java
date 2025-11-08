@@ -1,11 +1,11 @@
-import java.io.*;
+package com.mycompany.app;
+
+import java.io.*; // This class is now the generic one
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
-
-public class PerformanceTester {
+public class ProbabilisticTester {
     
-    // Simple Record class for single-value records
     static class Record {
         private String value;
         
@@ -133,9 +133,10 @@ public class PerformanceTester {
             e.printStackTrace();
         }
     }
+
     public static void main(String[] args) throws NoSuchAlgorithmException{
-        // Load your dataset (single column, one value per line)
-        String csvPath = "airline_users.csv"; // Change to your file path
+        // Load your dataset
+        String csvPath = "airline_users.csv"; 
         List<Record> fullDataset = loadYourData(csvPath);
         
         if (fullDataset.isEmpty()) {
@@ -151,7 +152,7 @@ public class PerformanceTester {
         Map<Integer, List<Long>> insertionTimingsMap = new LinkedHashMap<>();
         Map<Integer, List<Long>> comparisonTimingsMap = new LinkedHashMap<>();
         
-        System.out.println("\n=== Performance Testing ===");
+        System.out.println("\n=== Probabilistic Performance Testing ===");
         System.out.println("Total dataset size: " + fullDataset.size());
         System.out.println("Runs per sample size: " + k);
         System.out.println();
@@ -170,32 +171,26 @@ public class PerformanceTester {
                 List<Record> sample1 = drawSample(fullDataset, n/2, rng);
                 List<Record> sample2 = drawSample(fullDataset, n/2, rng);
 
-                //insertion timing
-
-                //set 1////////////////////////////////////////////
-                BinaryTreeSet binaryTreeSet1 = new BinaryTreeSet();
+                ProbabilisticSet structure1 = new ProbabilisticSet(); 
+                
                 long start1 = System.nanoTime();
                 for (Record r : sample1) {
-                    binaryTreeSet1.add(r.getValue());
+                    structure1.add(r.getValue()); 
                 }
                 long end1 = System.nanoTime();
                 insertion_timings.add(end1 - start1);
-                //////////////////////////////////////////////////
+
+                ProbabilisticSet structure2 = new ProbabilisticSet();
                 
-                //set 2////////////////////////////////////////////
-                BinaryTreeSet binaryTreeSet2 = new BinaryTreeSet();
                 long start2 = System.nanoTime();
                 for (Record r : sample2) {
-                    binaryTreeSet2.add(r.getValue());
+                    structure2.add(r.getValue());
                 }
                 long end2 = System.nanoTime();
                 insertion_timings.add(end2 - start2);
-                //////////////////////////////////////////////////
-                
-                //comparison timing
-                /////////////////////////////////////////////////
+
                 long startCmp = System.nanoTime();
-                binaryTreeSet1.equalsSet(binaryTreeSet2);
+                structure1.compareOverlap(structure2); 
                 long endCmp = System.nanoTime();
 
                 comparison_timings.add(endCmp - startCmp);
@@ -208,7 +203,7 @@ public class PerformanceTester {
             System.out.println("n=" + n + " (comparison): " + computeStats(comparison_timings));
             System.out.println();
         }
-        exportTimings(insertionTimingsMap, "insertion_timings.csv");
-        exportTimings(comparisonTimingsMap, "comparison_timings.csv");
+        exportTimings(insertionTimingsMap, "prob_insertion_timings.csv");
+        exportTimings(comparisonTimingsMap, "prob_comparison_timings.csv");
     }
 }
