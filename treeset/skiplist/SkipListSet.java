@@ -6,24 +6,23 @@ import java.util.Random;
  * SkipListSet that stores arbitrary objects by SHA-256 hashes.
  * Objects do not need to implement Comparable.
  */
-public class SkipListSet<T> {
+public class SkipListSet {
 
     private static final double P = 0.5;    // Probability for level promotion
     private static final int MAX_LEVEL = 16; // Maximum height of skip list
 
-    private final Node<T> head = new Node<>(null, MAX_LEVEL);
-    private int level = 0;
+    private final Node head = new Node(null, MAX_LEVEL);
+    private int level = 1;
     private int size = 0;
     private final Random random = new Random();
 
     // Node class
-    private static class Node<T> {
+    private static class Node {
         String hash;    // SHA-256 hash of value
-        T value;        // Original value
-        Node<T>[] forward;
+        String value;        // Original value
+        Node[] forward;
 
-        @SuppressWarnings("unchecked")
-        Node(T value, int level) {
+        Node(String value, int level) {
             this.value = value;
             this.forward = new Node[level];
             this.hash = value != null ? sha256Hex(value.toString()) : null;
@@ -60,10 +59,10 @@ public class SkipListSet<T> {
     }
 
     /** Add an element to the skip list */
-    public boolean add(T value) {
+    public boolean add(String value) {
         String hash = sha256Hex(value.toString());
-        Node<T>[] update = new Node[MAX_LEVEL];
-        Node<T> current = head;
+        Node[] update = new Node[MAX_LEVEL];
+        Node current = head;
 
         // Find insert position
         for (int i = level - 1; i >= 0; i--) {
@@ -88,7 +87,7 @@ public class SkipListSet<T> {
             level = newLevel;
         }
 
-        Node<T> newNode = new Node<>(value, newLevel);
+        Node newNode = new Node(value, newLevel);
         for (int i = 0; i < newLevel; i++) {
             newNode.forward[i] = update[i].forward[i];
             update[i].forward[i] = newNode;
@@ -99,9 +98,9 @@ public class SkipListSet<T> {
     }
 
     /** Check if the skip list contains a value */
-    public boolean contains(T value) {
+    public boolean contains(String value) {
         String hash = sha256Hex(value.toString());
-        Node<T> current = head;
+        Node current = head;
 
         for (int i = level - 1; i >= 0; i--) {
             while (current.forward[i] != null && compare(current.forward[i].hash, hash) < 0) {
@@ -113,11 +112,28 @@ public class SkipListSet<T> {
         return current != null && compare(current.hash, hash) == 0;
     }
 
+    public boolean equalsSet(SkipListSet other) {
+        if (other == null) return false;
+        if (this.size != other.size) return false;
+
+        Node a = this.head.forward[0];
+        Node b = other.head.forward[0];
+
+        while (a != null && b != null) {
+            if (!a.hash.equals(b.hash)) return false;
+            a = a.forward[0];
+            b = b.forward[0];
+        }
+
+        // both should reach null simultaneously
+        return a == null && b == null;
+    }
+
     /** Remove a value from the skip list */
-    public boolean remove(T value) {
+    public boolean remove(String value) {
         String hash = sha256Hex(value.toString());
-        Node<T>[] update = new Node[MAX_LEVEL];
-        Node<T> current = head;
+        Node[] update = new Node[MAX_LEVEL];
+        Node current = head;
 
         for (int i = level - 1; i >= 0; i--) {
             while (current.forward[i] != null && compare(current.forward[i].hash, hash) < 0) {
@@ -149,38 +165,5 @@ public class SkipListSet<T> {
         return size;
     }
 
-    /** Print elements in order of hashes */
-    public void printInOrder() {
-        Node<T> current = head.forward[0];
-        System.out.print("[");
-        while (current != null) {
-            System.out.print(current.value);
-            current = current.forward[0];
-            if (current != null) System.out.print(", ");
-        }
-        System.out.println("]");
-    }
 
-    /** Example usage */
-    public static void main(String[] args) {
-        SkipListSet<Object> set = new SkipListSet<>();
-        
-        set.add("apple1-2@gmail.com");
-        set.add("banana");
-        set.add(42);
-        set.add("apple"); // duplicate, ignored
-
-        System.out.println("Contains banana? " + set.contains("banana"));
-        System.out.println("Contains pear? " + set.contains("pear"));
-
-        set.printInOrder();
-        set.remove("banana");
-        set.printInOrder();
-
-        System.out.println("Size: " + set.size());
-        long startTime = System.nanoTime();
-        long endTime = System.nanoTime();
-        long duration = endTime - startTime;
-        
-    }
 }

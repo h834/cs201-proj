@@ -3,7 +3,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 
-public class PerformanceTester {
+public class PerformanceTesterBST {
     
     // Simple Record class for single-value records
     static class Record {
@@ -208,7 +208,7 @@ public class PerformanceTester {
             System.out.println("n=" + n + " (comparison): " + computeStats(comparison_timings));
             System.out.println();
         }
-        exportTimings(insertionTimingsMap, "treeset/binarytree/insertion_timings.csv");
-        exportTimings(comparisonTimingsMap, "comparison_timings.csv");
+        exportTimings(insertionTimingsMap, "insertion_timings_BST.csv");
+        exportTimings(comparisonTimingsMap, "comparison_timings_BST.csv");
     }
 }

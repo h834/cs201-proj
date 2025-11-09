@@ -3,7 +3,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 
-public class PerformanceTester {
+public class PerformanceTesterSL {
     
     // Simple Record class for single-value records
     static class Record {
@@ -173,20 +173,20 @@ public class PerformanceTester {
                 //insertion timing
 
                 //set 1////////////////////////////////////////////
-                BinaryTreeSet binaryTreeSet1 = new BinaryTreeSet();
+                SkipListSet skipListSet1 = new SkipListSet();
                 long start1 = System.nanoTime();
                 for (Record r : sample1) {
-                    binaryTreeSet1.add(r.getValue());
+                    skipListSet1.add(r.getValue());
                 }
                 long end1 = System.nanoTime();
                 insertion_timings.add(end1 - start1);
                 //////////////////////////////////////////////////
                 
                 //set 2////////////////////////////////////////////
-                BinaryTreeSet binaryTreeSet2 = new BinaryTreeSet();
+                SkipListSet skipListSet2 = new SkipListSet();
                 long start2 = System.nanoTime();
                 for (Record r : sample2) {
-                    binaryTreeSet2.add(r.getValue());
+                    skipListSet2.add(r.getValue());
                 }
                 long end2 = System.nanoTime();
                 insertion_timings.add(end2 - start2);
@@ -195,7 +195,7 @@ public class PerformanceTester {
                 //comparison timing
                 /////////////////////////////////////////////////
                 long startCmp = System.nanoTime();
-                binaryTreeSet1.equalsSet(binaryTreeSet1);
+                skipListSet1.equalsSet(skipListSet1);
                 long endCmp = System.nanoTime();
 
                 comparison_timings.add(endCmp - startCmp);
@@ -208,7 +208,7 @@ public class PerformanceTester {
             System.out.println("n=" + n + " (comparison): " + computeStats(comparison_timings));
             System.out.println();
         }
-        exportTimings(insertionTimingsMap, "treeset/binarytree/insertion_timings.csv");
-        exportTimings(comparisonTimingsMap, "comparison_timings.csv");
+        exportTimings(insertionTimingsMap, "treeset/skiplist/insertion_timings_SL.csv");
+        exportTimings(comparisonTimingsMap, "treeset/skiplist/comparison_timings_SL.csv");
     }
 }

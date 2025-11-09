@@ -1,18 +1,19 @@
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Stack;
 
-public class RBTreeSet<E> {
+public class RBTreeSet {
 
     private static final boolean RED = true;
     private static final boolean BLACK = false;
 
     // Node with color
-    private static class Node<String> {
+    private static class Node {
         String key;
         String value;
-        Node<String> left;
-        Node<String> right;
-        Node<String> parent;
+        Node left;
+        Node right;
+        Node parent;
         boolean color;
         
         Node(String key, String value, boolean color) {
@@ -22,7 +23,7 @@ public class RBTreeSet<E> {
         }
     }
 
-    private Node<String> root;
+    private Node root;
     private int size = 0;
 
     // Constructor
@@ -43,9 +44,48 @@ public class RBTreeSet<E> {
         return a.compareTo(b);
     }
 
+    public boolean equalsSet(RBTreeSet otherSet) {
+        if (this.size() != otherSet.size()) return false;
+        Stack<Node> stack1 = new Stack<>();
+        Stack<Node> stack2 = new Stack<>();
+        
+        Node current1 = this.root;
+        Node current2 = otherSet.root;
+        
+        while ((current1 != null || !stack1.isEmpty()) &&
+            (current2 != null || !stack2.isEmpty())) {
+            
+            // Reach the leftmost nodes of both trees
+            while (current1 != null) {
+                stack1.push(current1);
+                current1 = current1.left;
+            }
+            while (current2 != null) {
+                stack2.push(current2);
+                current2 = current2.left;
+            }
+            
+            // Pop nodes from both stacks
+            current1 = stack1.pop();
+            current2 = stack2.pop();
+            
+            // Compare values
+            if (!current1.value.equals(current2.value)) {
+                return false;
+            }
+            
+            // Move to the right subtree
+            current1 = current1.right;
+            current2 = current2.right;
+        }
+        
+        // Both stacks should be empty if trees are equal
+        return stack1.isEmpty() && stack2.isEmpty();
+    }
+
     // Helper methods for rotations
-    private void rotateLeft(Node<String> x) {
-        Node<String> y = x.right;
+    private void rotateLeft(Node x) {
+        Node y = x.right;
         x.right = y.left;
         if (y.left != null)
             y.left.parent = x;
@@ -60,8 +100,8 @@ public class RBTreeSet<E> {
         x.parent = y;
     }
 
-    private void rotateRight(Node<String> y) {
-        Node<String> x = y.left;
+    private void rotateRight(Node y) {
+        Node x = y.left;
         y.left = x.right;
         if (x.right != null)
             x.right.parent = y;
@@ -84,7 +124,7 @@ public class RBTreeSet<E> {
         String key = sha256Hex(value);
         
         // Standard BST insertion
-        Node<String> newNode = new Node<>(key, value, RED);
+        Node newNode = new Node(key, value, RED);
         if (root == null) {
             root = newNode;
             root.color = BLACK; // Root is always black
@@ -92,8 +132,8 @@ public class RBTreeSet<E> {
             return true;
         }
 
-        Node<String> current = root;
-        Node<String> parent = null;
+        Node current = root;
+        Node parent = null;
         
         while (current != null) {
             parent = current;
@@ -120,10 +160,10 @@ public class RBTreeSet<E> {
     }
 
     // Fix red-black tree properties after insertion
-    private void fixInsert(Node<String> z) {
+    private void fixInsert(Node z) {
         while (z.parent != null && z.parent.color == RED) {
             if (z.parent == z.parent.parent.left) {
-                Node<String> y = z.parent.parent.right; // Uncle
+                Node y = z.parent.parent.right; // Uncle
                 if (y != null && y.color == RED) {
                     // Case 1: Uncle is red
                     z.parent.color = BLACK;
@@ -142,7 +182,7 @@ public class RBTreeSet<E> {
                     rotateRight(z.parent.parent);
                 }
             } else {
-                Node<String> y = z.parent.parent.left; // Uncle
+                Node y = z.parent.parent.left; // Uncle
                 if (y != null && y.color == RED) {
                     // Case 1: Uncle is red
                     z.parent.color = BLACK;
@@ -167,7 +207,7 @@ public class RBTreeSet<E> {
 
     public boolean contains(String value) throws NoSuchAlgorithmException {
         String key = sha256Hex(value);
-        Node<String> current = root;
+        Node current = root;
         while (current != null) {
             int cmp = compare(key, current.key);
             if (cmp == 0)
@@ -183,7 +223,7 @@ public class RBTreeSet<E> {
             return false;
 
         String key = sha256Hex(value);
-        Node<String> z = root;
+        Node z = root;
 
         // Find the node to delete
         while (z != null) {
@@ -201,9 +241,9 @@ public class RBTreeSet<E> {
         return true;
     }
 
-    private void deleteNode(Node<String> z) {
-        Node<String> y = z;
-        Node<String> x;
+    private void deleteNode(Node z) {
+        Node y = z;
+        Node x;
         boolean yOriginalColor = y.color;
 
         if (z.left == null) {
@@ -236,13 +276,13 @@ public class RBTreeSet<E> {
             fixDelete(x);
     }
 
-    private Node<String> minimum(Node<String> node) {
+    private Node minimum(Node node) {
         while (node.left != null)
             node = node.left;
         return node;
     }
 
-    private void transplant(Node<String> u, Node<String> v) {
+    private void transplant(Node u, Node v) {
         if (u.parent == null)
             root = v;
         else if (u == u.parent.left)
@@ -255,10 +295,10 @@ public class RBTreeSet<E> {
     }
 
     // Fix red-black tree properties after deletion
-    private void fixDelete(Node<String> x) {
+    private void fixDelete(Node x) {
         while (x != root && x.color == BLACK) {
             if (x == x.parent.left) {
-                Node<String> w = x.parent.right; // Sibling
+                Node w = x.parent.right; // Sibling
                 if (w.color == RED) {
                     // Case 1: Sibling is red
                     w.color = BLACK;
@@ -287,7 +327,7 @@ public class RBTreeSet<E> {
                     x = root;
                 }
             } else {
-                Node<String> w = x.parent.left; // Sibling
+                Node w = x.parent.left; // Sibling
                 if (w.color == RED) {
                     // Case 1: Sibling is red
                     w.color = BLACK;
@@ -331,31 +371,10 @@ public class RBTreeSet<E> {
         System.out.println("]");
     }
 
-    private void inOrder(Node<String> node) {
+    private void inOrder(Node node) {
         if (node == null) return;
         inOrder(node.left);
         System.out.print(node.value + " ");
         inOrder(node.right);
-    }
-
-    // Test
-    public static void main(String[] args) throws NoSuchAlgorithmException {
-        RBTreeSet<String> set = new RBTreeSet<>();
-
-        set.add("10");
-        set.add("5");
-        set.add("15");
-        set.add("7");
-        set.add("3");
-
-        System.out.println("Set contains 7? " + set.contains("7"));
-        System.out.println("Set contains 8? " + set.contains("8"));
-
-        set.printInOrder(); // [3 5 7 10 15]
-
-        set.remove("5");
-        set.printInOrder(); // [3 7 10 15]
-
-        System.out.println("Size: " + set.size());
     }
 }

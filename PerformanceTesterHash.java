@@ -3,7 +3,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 
-public class PerformanceTester {
+public class PerformanceTesterHash {
     
     // Simple Record class for single-value records
     static class Record {
@@ -144,7 +144,7 @@ public class PerformanceTester {
         }
         
         // Setup experiment
-        Random rng = new Random(42); // Fixed seed for reproducibility
+        Random rng = new Random(42); 
         int[] sampleSizes = {50,70,90,110,130,150,170,190,210,230,250,270,290,310,330,350,370,390,410,430,450,470,490,510,530,550,570,590,610,630,650,670,690,710,730,750,770,790,810,830,850,870,890,910,930,950,970,990,1010,1030,1050,1070,1090,1110,1130,1150,1170,1190,1210,1230,1250,1270,1290,1310,1330,1350,1370,1390,1410,1430,1450,1470,1490,1510,1530,1550,1570,1590,1610,1630,1650,1670,1690,1710,1730,1750,1770,1790,1810,1830,1850,1870,1890,1910,1930,1950,1970,1990};
         int k = 41; // Number of runs per sample size
 
@@ -173,20 +173,20 @@ public class PerformanceTester {
                 //insertion timing
 
                 //set 1////////////////////////////////////////////
-                BinaryTreeSet binaryTreeSet1 = new BinaryTreeSet();
+                HashSetSeparateChaining hashSet1 = new HashSetSeparateChaining();
                 long start1 = System.nanoTime();
                 for (Record r : sample1) {
-                    binaryTreeSet1.add(r.getValue());
+                    hashSet1.add(r.getValue());
                 }
                 long end1 = System.nanoTime();
                 insertion_timings.add(end1 - start1);
                 //////////////////////////////////////////////////
                 
                 //set 2////////////////////////////////////////////
-                BinaryTreeSet binaryTreeSet2 = new BinaryTreeSet();
+                HashSetSeparateChaining hashSet2 = new HashSetSeparateChaining();
                 long start2 = System.nanoTime();
                 for (Record r : sample2) {
-                    binaryTreeSet2.add(r.getValue());
+                    hashSet2.add(r.getValue());
                 }
                 long end2 = System.nanoTime();
                 insertion_timings.add(end2 - start2);
@@ -195,7 +195,7 @@ public class PerformanceTester {
                 //comparison timing
                 /////////////////////////////////////////////////
                 long startCmp = System.nanoTime();
-                binaryTreeSet1.equalsSet(binaryTreeSet1);
+                hashSet1.intersection(hashSet2);
                 long endCmp = System.nanoTime();
 
                 comparison_timings.add(endCmp - startCmp);
@@ -208,7 +208,7 @@ public class PerformanceTester {
             System.out.println("n=" + n + " (comparison): " + computeStats(comparison_timings));
             System.out.println();
         }
-        exportTimings(insertionTimingsMap, "treeset/binarytree/insertion_timings.csv");
-        exportTimings(comparisonTimingsMap, "comparison_timings.csv");
+        exportTimings(insertionTimingsMap, "hashset/insertion_timingsSP.csv");
+        exportTimings(comparisonTimingsMap, "hashset/comparison_timingsSP.csv");
     }
 }
