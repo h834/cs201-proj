@@ -1,5 +1,3 @@
-package com.mycompany.app;
-
 import org.apache.datasketches.hll.HllSketch;
 import org.apache.datasketches.hll.TgtHllType;
 import org.apache.datasketches.hll.Union;

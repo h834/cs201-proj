@@ -60,7 +60,6 @@ public class HashSetQuadraticProbing<T> implements ISet<T> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public boolean contains(T item) {
         if (item == null) return false;
 
@@ -132,7 +131,6 @@ public class HashSetQuadraticProbing<T> implements ISet<T> {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
         public T next() {
             if (!hasNext()) {
                 throw new NoSuchElementException();

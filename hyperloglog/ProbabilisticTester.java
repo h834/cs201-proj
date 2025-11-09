@@ -1,5 +1,3 @@
-package com.mycompany.app;
-
 import java.io.*; // This class is now the generic one
 import java.security.NoSuchAlgorithmException;
 import java.util.*;

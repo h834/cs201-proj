@@ -20,7 +20,6 @@ public class DynamicArraySet<T> {
         data[size++] = value;
     }
 
-    @SuppressWarnings("unchecked")
     public boolean contains(T value) {
         for (int i = 0; i < size; i++) {
             if (data[i].equals(value)) return true;
