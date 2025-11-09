@@ -1,7 +1,15 @@
 package com.mycompany.app;
-import java.io.*; // This class is now the generic one
+import java.io.BufferedReader; // This class is now the generic one
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 public class ProbabilisticTester {
     
@@ -135,7 +143,7 @@ public class ProbabilisticTester {
 
     public static void main(String[] args) throws NoSuchAlgorithmException{
         // Load your dataset
-        String csvPath = "airline_users.csv"; 
+        String csvPath = "src/main/java/com/mycompany/app/airline_users.csv";
         List<Record> fullDataset = loadYourData(csvPath);
         
         if (fullDataset.isEmpty()) {
