@@ -1,6 +1,14 @@
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 
 public class PerformanceTesterBST {
@@ -145,7 +153,7 @@ public class PerformanceTesterBST {
         
         // Setup experiment
         Random rng = new Random(42); // Fixed seed for reproducibility
-        int[] sampleSizes = {41000};
+        int[] sampleSizes = {50,70,90,110,130,150,170,190,210,230,250,270,290,310,330,350,370,390,410,430,450,470,490,510,530,550,570,590,610,630,650,670,690,710,730,750,770,790,810,830,850,870,890,910,930,950,970,990,1010,1030,1050,1070,1090,1110,1130,1150,1170,1190,1210,1230,1250,1270,1290,1310,1330,1350,1370,1390,1410,1430,1450,1470,1490,1510,1530,1550,1570,1590,1610,1630,1650,1670,1690,1710,1730,1750,1770,1790,1810,1830,1850,1870,1890,1910,1930,1950,1970,1990, 41000};
         int k = 100; // Number of runs per sample size
 
         Map<Integer, List<Long>> insertionTimingsMap = new LinkedHashMap<>();
