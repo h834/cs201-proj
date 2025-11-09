@@ -9,15 +9,13 @@ public class RBTreeSet {
 
     // Node with color
     private static class Node {
-        String key;
         String value;
         Node left;
         Node right;
         Node parent;
         boolean color;
         
-        Node(String key, String value, boolean color) {
-            this.key = key;
+        Node(String value, boolean color) {
             this.value = value;
             this.color = color;
         }
@@ -28,15 +26,6 @@ public class RBTreeSet {
 
     // Constructor
     public RBTreeSet() {
-    }
-
-    // Hash utility
-    private String sha256Hex(String input) throws NoSuchAlgorithmException {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        byte[] hash = digest.digest(input.getBytes());
-        StringBuilder sb = new StringBuilder();
-        for (byte b : hash) sb.append(String.format("%02x", b));
-        return sb.toString();
     }
 
     // Utility comparison method
@@ -121,10 +110,8 @@ public class RBTreeSet {
         if (value == null)
             throw new NullPointerException("Null values not allowed");
         
-        String key = sha256Hex(value);
-        
         // Standard BST insertion
-        Node newNode = new Node(key, value, RED);
+        Node newNode = new Node(value, RED);
         if (root == null) {
             root = newNode;
             root.color = BLACK; // Root is always black
@@ -137,7 +124,7 @@ public class RBTreeSet {
         
         while (current != null) {
             parent = current;
-            int cmp = compare(key, current.key);
+            int cmp = compare(value ,current.value);
             if (cmp == 0) {
                 return false; // Duplicate
             } else if (cmp < 0) {
@@ -148,7 +135,7 @@ public class RBTreeSet {
         }
 
         newNode.parent = parent;
-        int cmp = compare(key, parent.key);
+        int cmp = compare(value, parent.value);
         if (cmp < 0)
             parent.left = newNode;
         else
@@ -206,10 +193,9 @@ public class RBTreeSet {
     }
 
     public boolean contains(String value) throws NoSuchAlgorithmException {
-        String key = sha256Hex(value);
         Node current = root;
         while (current != null) {
-            int cmp = compare(key, current.key);
+            int cmp = compare(value, current.value);
             if (cmp == 0)
                 return true;
             current = (cmp < 0) ? current.left : current.right;
@@ -221,13 +207,11 @@ public class RBTreeSet {
     public boolean remove(String value) throws NoSuchAlgorithmException {
         if (root == null)
             return false;
-
-        String key = sha256Hex(value);
         Node z = root;
 
         // Find the node to delete
         while (z != null) {
-            int cmp = compare(key, z.key);
+            int cmp = compare(value, z.value);
             if (cmp == 0)
                 break;
             z = (cmp < 0) ? z.left : z.right;

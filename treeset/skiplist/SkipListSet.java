@@ -1,5 +1,3 @@
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
 /**
@@ -18,31 +16,15 @@ public class SkipListSet {
 
     // Node class
     private static class Node {
-        String hash;    // SHA-256 hash of value
-        String value;        // Original value
+        String value;        
         Node[] forward;
 
         Node(String value, int level) {
             this.value = value;
             this.forward = new Node[level];
-            this.hash = value != null ? sha256Hex(value.toString()) : null;
         }
     }
 
-    /** Hashing method: SHA-256 as hex string */
-    private static String sha256Hex(String input) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = digest.digest(input.getBytes());
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hashBytes) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 not available", e);
-        }
-    }
 
     /** Generate a random level for a new node */
     private int randomLevel() {
@@ -54,19 +36,18 @@ public class SkipListSet {
     }
 
     /** Compare hashes lexicographically */
-    private int compare(String hash1, String hash2) {
-        return hash1.compareTo(hash2);
+    private int compare(String val1, String val2) {
+        return val1.compareTo(val2);
     }
 
     /** Add an element to the skip list */
     public boolean add(String value) {
-        String hash = sha256Hex(value.toString());
         Node[] update = new Node[MAX_LEVEL];
         Node current = head;
 
         // Find insert position
         for (int i = level - 1; i >= 0; i--) {
-            while (current.forward[i] != null && compare(current.forward[i].hash, hash) < 0) {
+            while (current.forward[i] != null && compare(current.forward[i].value, value) < 0) {
                 current = current.forward[i];
             }
             update[i] = current;
@@ -74,7 +55,7 @@ public class SkipListSet {
         current = current.forward[0];
 
         // Already exists
-        if (current != null && compare(current.hash, hash) == 0) {
+        if (current != null && compare(current.value, value) == 0) {
             return false;
         }
 
@@ -99,17 +80,16 @@ public class SkipListSet {
 
     /** Check if the skip list contains a value */
     public boolean contains(String value) {
-        String hash = sha256Hex(value.toString());
         Node current = head;
 
         for (int i = level - 1; i >= 0; i--) {
-            while (current.forward[i] != null && compare(current.forward[i].hash, hash) < 0) {
+            while (current.forward[i] != null && compare(current.forward[i].value, value) < 0) {
                 current = current.forward[i];
             }
         }
         current = current.forward[0];
 
-        return current != null && compare(current.hash, hash) == 0;
+        return current != null && compare(current.value, value) == 0;
     }
 
     public boolean equalsSet(SkipListSet other) {
@@ -120,7 +100,7 @@ public class SkipListSet {
         Node b = other.head.forward[0];
 
         while (a != null && b != null) {
-            if (!a.hash.equals(b.hash)) return false;
+            if (!a.value.equals(b.value)) return false;
             a = a.forward[0];
             b = b.forward[0];
         }
@@ -131,19 +111,18 @@ public class SkipListSet {
 
     /** Remove a value from the skip list */
     public boolean remove(String value) {
-        String hash = sha256Hex(value.toString());
         Node[] update = new Node[MAX_LEVEL];
         Node current = head;
 
         for (int i = level - 1; i >= 0; i--) {
-            while (current.forward[i] != null && compare(current.forward[i].hash, hash) < 0) {
+            while (current.forward[i] != null && compare(current.forward[i].value, value) < 0) {
                 current = current.forward[i];
             }
             update[i] = current;
         }
         current = current.forward[0];
 
-        if (current == null || compare(current.hash, hash) != 0) {
+        if (current == null || compare(current.value, value) != 0) {
             return false; // not found
         }
 

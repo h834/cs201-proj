@@ -209,6 +209,6 @@ public class PerformanceTester {
             System.out.println();
         }
         exportTimings(insertionTimingsMap, "treeset/binarytree/insertion_timings.csv");
-        exportTimings(comparisonTimingsMap, "comparison_timings.csv");
+        exportTimings(comparisonTimingsMap, "treeset/binarytree/comparison_timings.csv");
     }
 }
